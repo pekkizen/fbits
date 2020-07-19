@@ -1,4 +1,4 @@
-package prng
+package fbits
 
 import (
 	"math"
@@ -13,15 +13,15 @@ const (
 
 // UlpsBetween returns the distance between x and y in ulpS.
 // 
-// The distance in ulpS is the number of float64's between x and y - 1.
+// The distance in ulps is the number of float64's between x and y - 1.
 // Special cases:
 // UlpsBetween(+/-Inf, +/-MaxFloat64) = 1
-// UlpsBetween(-0, 0)                 = 0
-// UlpsBetween(-0, 2^-1074)           = 1
-// UlpsBetween(0, -2^-1074)           = 1
 // UlpsBetween(+/-Inf, +/-Inf)        = 0
 // UlpsBetween(-Inf, +Inf)            = maxUint64 - 2^53 + 1 (18437736874454810624)
 // UlpsBetween(x, NaN)                = maxUint64 
+// UlpsBetween(-0, 0)                 = 0
+// UlpsBetween(-0, 2^-1074)           = 1
+// UlpsBetween(0, -2^-1074)           = 1
 // 
 func UlpsBetween(x, y float64) (u uint64) {
 	k := math.Float64bits(x)
@@ -83,7 +83,7 @@ func AdjacentFP(x, y float64) bool {
 	if mean != x && mean != y {      // NaNs
 		return false
 	}
-	return -math.MaxFloat64 <= mean && mean <= math.MaxFloat64  // Infs
+	return -math.MaxFloat64 <= mean && mean <= math.MaxFloat64  // Infs 
 }
 
 // Ulp returns the ulp of x as a positive float64. 
@@ -99,7 +99,7 @@ func Ulp(x float64) float64 {
 	u := math.Float64bits(x) &^ signbit
 	exp := u >> 52
 	switch {
-	case exp == 0x7ff:       // Infs and NaNs, return abs(x)
+	case exp == 0x7ff:       // Infs and NaNs, returns abs(x)
 	case exp > 52:
 		u = (exp - 52) << 52
 	case exp > 1:
@@ -190,7 +190,7 @@ func IsPowerOfTwoMinimal(x float64) bool {
 	return s & (s - 1) == 0 && ((s > 0) != (e > 0)) && e < 0x7ff
 }
 
-// A float64 value x is a power of two if and only if the following 
+// A float64 value x is an integer power of two if and only if the following 
 // conditions are met:
 //     s & (s - 1) == 0     -> significand is zero or power of two
 //     (s > 0) != (e > 0)   -> significand or exponent is zero, but not both
@@ -198,7 +198,7 @@ func IsPowerOfTwoMinimal(x float64) bool {
 
 // Above e > 0 is true for a negative x, but the last condition drops this out.
 // s <<= 12 is faster than masking s &= (1<<52)-1 ? 
-// The position of the bits is not relevant here.
+// The position of the significand bits is not relevant here.
 
 // IsPowerOfTwoFP returns true if float64 x is an integer power of two.
 // https://stackoverflow.com/questions/27566187/code-for-check-if-double-is-a-power-of-2-without-bit-manipulation-in-c
@@ -264,7 +264,7 @@ func IsNaN(x float64) bool {
 // 
 // NextToZero(x) is equivalent to math.Nextafter(x, 0)
 // Special cases:
-// NextToZero(+/-Inf)   = +/-Inf
+// NextToZero(+/-Inf)   = +/-MaxFloat64
 // NextToZero(NaN)      = NaN
 // NextToZero(0)        = 0
 // NextToZero(-0)       = -0  
@@ -276,7 +276,7 @@ func NextToZero(x float64) float64 {
 		return y                                      // NaNs
 	}
 	u := math.Float64bits(x)
-	if u &^ signbit >= posInf || x == 0 { return x }  // Infs and +/-zero
+	if u &^ signbit > posInf || x == 0 { return x }  // Infs and +/-zero
 	return math.Float64frombits(u - 1)
 }
 

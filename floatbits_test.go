@@ -1,10 +1,21 @@
-package prng
+package fbits
 
 import (
 	"math"
 	"testing"
 )
 
+var usink uint64
+var fsink float64
+var isink int
+var bsink bool
+
+func abs(x float64) float64 {
+	if x > 0 {
+		return x
+	}
+	return -x
+}
 func BenchmarkUlpsBetween(b *testing.B) {
 	var u uint64
 	f2 := 1.0
@@ -58,24 +69,12 @@ func BenchmarkIsPowerOfTwoJava(b *testing.B) {
 	}
 	bsink = is
 }
-func BenchmarkIsFuncs(b *testing.B) {
-	var is bool
-	for n := 0; n < b.N; n++ {
-		f := float64(n)
 
-		is = IsFinite(f)
-		// is = !math.IsNaN(f) && !math.IsInf(f, 0)
-
-		// is = IsNaN(f)
-		// is = IsInf(f)
-		// is = math.IsInf(f, 0)
-	}
-	bsink = is
-}
 func BenchmarkUlp(b *testing.B) {
 	var y float64
 	for n := 0; n < b.N; n++ {
 		f := float64(n)
+		// y = math.Abs(f)
 		y = Ulp(f)
 	}
 	fsink = y
@@ -194,12 +193,10 @@ func TestInfNaN(t *testing.T) {
 func TestNextToZero(t *testing.T) {
     const rounds int = 1e8*3
 	state := uint64(1)
-	zero, max, inf, nan, min := 0.0, math.MaxFloat64, math.Inf(1), math.NaN(), 0x1p-1074
+	zero, inf, nan, min := 0.0, math.Inf(1), math.NaN(), 0x1p-1074
 
 	t.Logf("zero     %v", NextToZero(zero))
 	t.Logf("-zero    %v", NextToZero(-zero))
-	t.Logf("max      %v", NextToZero(max))
-	t.Logf("-max     %v", NextToZero(-max))
 	t.Logf("min      %v", NextToZero(min))
 	t.Logf("-min     %v", NextToZero(-min))
 	t.Logf("+inf     %v", NextToZero(inf))
