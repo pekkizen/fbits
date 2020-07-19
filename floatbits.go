@@ -138,7 +138,7 @@ func LogUlp(x float64) (exp int) {
 // 
 func UlpFP(x float64) float64 {
 	y := x - x * (1 - 0x1p-53)   // y = x - NextToZeroFP(x)
-	if y < 0 { return -y } 
+	if y < 0 { return -y }       // +/-Inf - +/-Inf = NaN
 	return y
 }
 
@@ -263,6 +263,7 @@ func IsNaN(x float64) bool {
 // NextToZero returns the next float64 after x towards zero.
 // 
 // NextToZero(x) is equivalent to math.Nextafter(x, 0)
+// In a benchmark loop it is as fast as math.Abs.
 // Special cases:
 // NextToZero(+/-Inf)   = +/-MaxFloat64
 // NextToZero(NaN)      = NaN
@@ -272,12 +273,11 @@ func IsNaN(x float64) bool {
 // NextToZero(-2^-1074) = -0
 // 
 func NextToZero(x float64) float64 {
-	if y := NextToZeroFP(x); y != x {                 // not necessary, , ~40% speed up
-		return y                                      // NaNs
+	if y := NextToZeroFP(x); y != x {      // Nan != NaN is true            
+		return y                               
 	}
-	u := math.Float64bits(x)
-	if u &^ signbit > posInf || x == 0 { return x }  // Infs and +/-zero
-	return math.Float64frombits(u - 1)
+	if x == 0 { return x } 
+	return math.Float64frombits(math.Float64bits(x) - 1)
 }
 
 // NextToZeroFP is equivalent to NextToZero for abs(x) > 2^-1022. 
@@ -299,16 +299,15 @@ func NextToZeroFP(x float64) float64 {
 // NextFromZero(NaN)           = NaN
 // NextFromZero(+/-Inf)        = +/-Inf 
 // NextFromZero(+/-MaxFloat64) = +/-Inf  
-// NextFromZero(0)             = 2^-1074 (SmallestNonzeroFloat64)
+// NextFromZero(0)             = 2^-1074 
 // NextFromZero(-0)            = -2^-1074
 // 
 func NextFromZero(x float64) float64 {
-	if y := NextFromZeroFP(x); x != y {     // not necessary, ~20% speed up
-		return y                            // NaNs
+	if y := NextFromZeroFP(x); x != y {    // Nan != NaN is true     
+		return y                            
 	}
-	u := math.Float64bits(x)
-	if u &^ signbit >= posInf { return x }  // Infs 
-	return math.Float64frombits(u + 1)
+	if IsInf(x) { return x }
+	return math.Float64frombits(math.Float64bits(x) + 1)
 }
 
 // NextFromZeroFP is equivalent to NextFromZero for abs(x) >= 2^-1019. 
@@ -316,7 +315,7 @@ func NextFromZero(x float64) float64 {
 // The evident formula x * (1 + 0x1p-52) doesn't work.
 // 
 func NextFromZeroFP(x float64) float64 {
-	return x + x * 0x1.25p-53
+	return x + x * 0x1.25p-53  // +/-Inf + +/-Inf = +/-Inf
 	// return x * (1 + 0x1p-52)
 }
 
