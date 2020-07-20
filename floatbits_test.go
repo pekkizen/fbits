@@ -20,35 +20,31 @@ func BenchmarkUlpsBetween(b *testing.B) {
 	var u uint64
 	f2 := 1.0
 	for n := 0; n < b.N; n++ {
-		f1 := float64(n)
-		u = UlpsBetween(f1, f2)
+		u = UlpsBetween(float64(n), f2)
 	}
 	usink = u
 }
 
 func BenchmarkAdjacent(b *testing.B) {
 	var is bool
-	f1, f2 := 1.0, 1.0
+	f2 := 1.0
 	for n := 0; n < b.N; n++ {
-		f1 = float64(n)
-		is = Adjacent(f1, f2)
+		is = Adjacent(float64(n), f2)
 	}
 	bsink = is
 }
 func BenchmarkAdjacentFP(b *testing.B) {
 	var is bool
-	f1, f2 := 1.0, 1.0
+	f2 := 1.0
 	for n := 0; n < b.N; n++ {
-		f1 = float64(n)
-		is = AdjacentFP(f1, f2)
+		is = AdjacentFP(float64(n), f2)
 	}
 	bsink = is
 }
 func BenchmarkIsPowerOfTwo(b *testing.B) {
 	var is bool
 	for n := 0; n < b.N; n++ {
-		f := float64(n)
-		is = IsPowerOfTwo(f)
+		is = IsPowerOfTwo(float64(n))
 	}
 	bsink = is
 }
@@ -56,16 +52,14 @@ func BenchmarkIsPowerOfTwo(b *testing.B) {
 func BenchmarkIsPowerOfTwoFP(b *testing.B) {
 	var is bool
 	for n := 0; n < b.N; n++ {
-		f := float64(n)
-		is = IsPowerOfTwoFP(f)
+		is = IsPowerOfTwoFP(float64(n))
 	}
 	bsink = is
 }
 func BenchmarkIsPowerOfTwoJava(b *testing.B) {
 	var is bool
 	for n := 0; n < b.N; n++ {
-		f := float64(n)
-		is = IsPowerOfTwoJava(f)
+		is = IsPowerOfTwoJava(float64(n))
 	}
 	bsink = is
 }
@@ -73,9 +67,7 @@ func BenchmarkIsPowerOfTwoJava(b *testing.B) {
 func BenchmarkUlp(b *testing.B) {
 	var y float64
 	for n := 0; n < b.N; n++ {
-		f := float64(n)
-		// y = math.Abs(f)
-		y = Ulp(f)
+		y = Ulp(float64(n))
 	}
 	fsink = y
 }
@@ -83,8 +75,7 @@ func BenchmarkUlp(b *testing.B) {
 func BenchmarkUlpFP(b *testing.B) {
 	var y float64
 	for n := 0; n < b.N; n++ {
-		f := float64(n)
-		y = UlpFP(f)
+		y = UlpFP(float64(n))
 	}
 	fsink = y
 }
@@ -92,16 +83,14 @@ func BenchmarkUlpFP(b *testing.B) {
 func BenchmarkLogUlp(b *testing.B) {
 	var y int
 	for n := 0; n < b.N; n++ {
-		f := float64(n)
-		y = LogUlp(f)
+		y = LogUlp(float64(n))
 	}
 	isink = y
 }
 func BenchmarkLog2(b *testing.B) {
 	var u int
 	for n := 0; n < b.N; n++ {
-		f := float64(n)
-		u = Log2(f)
+		u = Log2(float64(n))
 	}
 	isink = u
 }
@@ -109,16 +98,15 @@ func BenchmarkLog2(b *testing.B) {
 func BenchmarkNextToZero(b *testing.B) {
 	var y float64
 	for n := 0; n < b.N; n++ {
-		f := float64(n)
-		y = NextToZero(f)
+		y = NextToZero(float64(n))
+		// y = math.Abs(float64(n))
 	}
 	fsink = y
 }
 func BenchmarkNextToZeroFP(b *testing.B) {
 	var y float64
 	for n := 0; n < b.N; n++ {
-		f := float64(n)
-		y = NextToZeroFP(f)
+		y = NextToZeroFP(float64(n))
 	}
 	fsink = y
 }
@@ -126,20 +114,26 @@ func BenchmarkNextToZeroFP(b *testing.B) {
 func BenchmarkNextFromZero(b *testing.B) {
 	var y float64
 	for n := 0; n < b.N; n++ {
-		f := float64(n)
-		y = NextFromZero(f)
+		y = NextFromZero(float64(n))
 	}
 	fsink = y
 }
 func BenchmarkMathNextafter(b *testing.B) {
 	var y float64
 	for n := 0; n < b.N; n++ {
-		f := float64(n)
-		y = math.Nextafter(f, math.MaxFloat64)
+		y = math.Nextafter(float64(n), math.MaxFloat64)
 	}
 	fsink = y
 }
 
+func BenchmarkRandomFloat64(b *testing.B) {
+	var y float64
+	state := uint64(1)
+	for n := 0; n < b.N; n++ {
+		y = RandomFloat64(&state)
+	}
+	fsink = y
+}
 // ------------------------------------------------------------- Tests
 func TestRandomFloat64(t *testing.T) {
 	const rounds int = 1e8*3
@@ -540,7 +534,7 @@ func TestIsPowerOfTwo(t *testing.T) {
 
 	state := uint64(1)
 	for i := 0; i < rounds; i++ {
-		f1 := Ulp(RandomFloat64(&state))                      // power of two
+		f1 := Ulp(RandomFloat64(&state))                      // Ulp is power of two
 		f2 := math.Float64frombits(math.Float64bits(f1) + 5)  // not power of two
 		if !IsPowerOfTwo(f1) || IsPowerOfTwo(f2) {
 			t.Logf("i       %d", i)

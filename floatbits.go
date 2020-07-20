@@ -164,46 +164,33 @@ func Log2(x float64) int {
 // 
 // Cases of interest:
 // IsPowerOfTwo(1)      = true
-// IsPowerOfTwo(-1)     = false
 // IsPowerOfTwo(0)      = false
+// IsPowerOfTwo(x)      = false for x < 0
 // IsPowerOfTwo(+/-Inf) = false
 // IsPowerOfTwo(NaN)    = false
 // 
 func IsPowerOfTwo(x float64) bool {
-	s := math.Float64bits(x) << 12            // 52 significand bits + zeros                
-	if s & (s - 1) > 0 {                      // there are only 2046 + 52
-		return false                          // power of 2 float64's
-	}
-	e := math.Float64bits(x) >> 52            // sign bit + 11 exponent bits                   
-	return ((s > 0) != (e > 0)) && e < 0x7ff
-}
-
-// IsPowerOfTwoMinimal is an equivalent function to IsPowerOfTwo without
-// any speed up tricks. A nice small function, but ~25% (0.16 ns) slower
-// with standard Go 14.3 compiler and random floats.
-// 
-func IsPowerOfTwoMinimal(x float64) bool {
 	s := math.Float64bits(x) 
 	e := s >> 52                  // sign bit + 11 exponent bits                                                
 	s <<= 12                      // 52 significand bits + zeros 
 
-	return s & (s - 1) == 0 && ((s > 0) != (e > 0)) && e < 0x7ff
+	return s & (s - 1) == 0 && (s > 0) != (e > 0) && e < 0x7ff
 }
 
 // A float64 value x is an integer power of two if and only if the following 
-// conditions are met:
+// three conditions are met:
 //     s & (s - 1) == 0     -> significand is zero or power of two
 //     (s > 0) != (e > 0)   -> significand or exponent is zero, but not both
 //     e < 0x7ff            -> x is not +/-Inf, NaN or negative
-
-// Above e > 0 is true for a negative x, but the last condition drops this out.
-// s <<= 12 is faster than masking s &= (1<<52)-1 ? 
+// 
+// Above e > 0 is true for all negative x, but the last condition drops these out.
+// s <<= 12 is here faster than masking s &= (1<<52)-1 ? 
 // The position of the significand bits is not relevant here.
 
 // IsPowerOfTwoFP returns true if float64 x is an integer power of two.
 // https://stackoverflow.com/questions/27566187/code-for-check-if-double-is-a-power-of-2-without-bit-manipulation-in-c
-// This is without bit operations and it seems to work, but is over 50% slower than IsPowerOfTwo
-// Formula "x > 0 && 0x1.0p-51/x * x - 0x1.0p-51 == 0" without FMA doesn't work.
+// This is without bit operations and it works, but is over 60% slower than IsPowerOfTwo
+// Formula x > 0 && 0x1.0p-51/x * x - 0x1.0p-51 == 0 without FMA doesn't work.
 // 
 func IsPowerOfTwoFP(x float64) bool { 
 	return x > 0 && math.FMA(0x1.0p-51/x, x, -0x1.0p-51) == 0 
@@ -211,7 +198,7 @@ func IsPowerOfTwoFP(x float64) bool {
 
 // Java DoubleUtils.IsPowerOfTwo(double x) from com.google.common.math.
 // https://www.codota.com/code/java/classes/com.romainpiel.guava.math.DoubleUtils
-// This checks twice both x > 0 and IsFinite(x).
+// This checks twice IsFinite(x).
 // 
 // public static boolean IsPowerOfTwo(double x) {
 //  return x > 0.0 && IsFinite(x) && LongMath.IsPowerOfTwo(getSignificand(x));
@@ -254,12 +241,6 @@ func IsFinite(x float64) bool {
 	return math.Float64bits(x) &^ signbit < posInf 
 }
 
-// IsNaN  returns true if x is NaN.
-// This is a copy of math.IsNaN
-func IsNaN(x float64) bool {
-	return x != x
-}
-
 // NextToZero returns the next float64 after x towards zero.
 // 
 // NextToZero(x) is equivalent to math.Nextafter(x, 0)
@@ -273,7 +254,7 @@ func IsNaN(x float64) bool {
 // NextToZero(-2^-1074) = -0
 // 
 func NextToZero(x float64) float64 {
-	if y := NextToZeroFP(x); y != x {      // Nan != NaN is true            
+	if y := NextToZeroFP(x); y != x {    // Nan != NaN is true            
 		return y                               
 	}
 	if x == 0 { return x } 
@@ -316,7 +297,6 @@ func NextFromZero(x float64) float64 {
 // 
 func NextFromZeroFP(x float64) float64 {
 	return x + x * 0x1.25p-53  // +/-Inf + +/-Inf = +/-Inf
-	// return x * (1 + 0x1p-52)
 }
 
 // RandomFloat64 returns a random float64's from [-MaxFloat64, MaxFloat64].
