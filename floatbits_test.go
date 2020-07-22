@@ -67,15 +67,9 @@ func BenchmarkIsPowerOfTwoJava(b *testing.B) {
 func BenchmarkUlp(b *testing.B) {
 	var y float64
 	for n := 0; n < b.N; n++ {
-		y = Ulp(float64(n))
-	}
-	fsink = y
-}
-
-func BenchmarkUlpFP(b *testing.B) {
-	var y float64
-	for n := 0; n < b.N; n++ {
-		y = UlpFP(float64(n))
+		// y = Ulp(float64(n))
+		// y = UlpBits(float64(n))
+		y = UlpDiff(float64(n))
 	}
 	fsink = y
 }
@@ -130,17 +124,21 @@ func BenchmarkRandomFloat64(b *testing.B) {
 	var y float64
 	state := uint64(1)
 	for n := 0; n < b.N; n++ {
+		// y = FiniteFloat64frombits(Splitmix(&state))
 		y = RandomFloat64(&state)
 	}
 	fsink = y
 }
 // ------------------------------------------------------------- Tests
 func TestRandomFloat64(t *testing.T) {
-	const rounds int = 1e8*3
-	min, max, i01 := 999.0, 0.0, 0.0
+	const rounds int = 1e8*2
+	min, max, prop := 999.0, 0.0, 0.0
 	state := uint64(1)
 	for i := 0; i < rounds; i++ {
 		f := RandomFloat64(&state)
+		if !IsFinite(f) {
+			t.Fatalf("Inf or NaN   %16X", math.Float64bits(f))
+		}
 		if f < 0 {
 			f = -f
 		}
@@ -151,13 +149,19 @@ func TestRandomFloat64(t *testing.T) {
 			max = f
 		}
 		if f >= 0 && f < 1 {
-			i01++
+			prop++
 		}
 	}
+	expected := 100.0*1023 / 2047
 	t.Logf("Min   %v", min)
 	t.Logf("Max   %v", max)
-	t.Logf("0-1   %v", 100*float64(i01) / float64(rounds))
+	prop = 100*prop / float64(rounds)
+	t.Logf("0-1   %v (%2.6f)", prop, expected)
+	if abs(prop - expected) > 0.001 {
+		t.Fatalf("Proportion 0-1 failed  %v", prop - expected)
+	}
 }
+
 func TestIsInf(t *testing.T) {
 	t.Logf("+Inf           %v", IsInf(math.Inf(1)))
 	t.Logf("-Inf           %v", IsInf(math.Inf(-1)))
@@ -375,7 +379,7 @@ func TestUlpsBetween(t *testing.T) {
 	
 	state := uint64(1)
 	for i := 1; i < rounds; i++ {
-		dist := 1.0 + float64(splitmix(&state) & ((1<<32) - 1))
+		dist := 1.0 + float64(Splitmix(&state) & ((1<<32) - 1))
 		f1 := RandomFloat64(&state)
         f2 := f1
         u1 := Ulp(f1)
@@ -401,7 +405,9 @@ func TestUlpsBetween(t *testing.T) {
 
 func TestUlp(t *testing.T) {
     const rounds int = 1e8*2
-	
+	Ulp := UlpDiff
+	// Ulp := UlpBits
+
 	t.Logf("Value        Log2(Ulp)")
 	t.Logf("0            %v", math.Log2(Ulp(0)))
 	t.Logf("0.5          %v", math.Log2(Ulp(0.5)))
@@ -427,39 +433,19 @@ func TestUlp(t *testing.T) {
 			t.Logf("i    %d", i)
 			t.Logf("F1   %v", f1)
 			t.Logf("F2   %v", f2)
+			t.Logf("F3   %v", f3)
 			t.Logf("F1   %X" , math.Float64bits(f1))
-			t.Fatalf("F2   %X" , math.Float64bits(f2))
+			t.Logf("F2   %X" , math.Float64bits(f2))
+			t.Fatalf("F3   %X" , math.Float64bits(f3))
 		}
 	}
 }
 
-func TestUlpFP(t *testing.T) {
-    const rounds int = 1e8*2
-	state := uint64(1)
-	inf := math.Inf(1)
-	t.Logf("inf   %v", UlpFP(inf))
-	for i := 0; i < rounds; i++ {
-		f1 := RandomFloat64(&state)
-		if i == 0 {
-			// f1 = 0x1p-1021
-			f1 = 0.5
-		}
-		u1 :=  Ulp(f1)
-		u2 :=  UlpFP(f1)
-		if IsPowerOfTwo(f1) && u1 == 2 * u2 { // towards and away from zero
-			continue
-		}
-		if u1 != u2 && abs(f1) > 0x1p-1022 {
-			t.Logf("i    %d", i)
-			t.Logf("F1   %v", f1)
-			t.Logf("U1   %v", u1)
-			t.Logf("U2   %v", u2)
-			t.Fatalf(" ")
-		}
-	}
-}
 func TestLogUlp(t *testing.T) {
-    const rounds int = 1e7*2
+	const rounds int = 1e8
+	t.Logf("MaxFloat64   %d", LogUlp(math.MaxFloat64))
+	t.Logf("+/-Inf       %d", LogUlp(math.Inf(1)))
+	t.Logf("NaN          %d", LogUlp(math.NaN()))
 	state := uint64(1)
 	for i := 0; i < rounds; i++ {
 		f := RandomFloat64(&state)
@@ -469,7 +455,7 @@ func TestLogUlp(t *testing.T) {
 		u := Ulp(f)
 		l1 := LogUlp(f)
 		l2 := Log2(u)
-		if u != math.Pow(2, float64(l1)) || l1 != l2 {
+		if u != math.Ldexp(1, l1) || l1 != l2 {
 			t.Logf("i    %d", i)
 			t.Logf("F    %v", f)
 			t.Fatalf("F    %X" , math.Float64bits(f))
@@ -515,7 +501,7 @@ func TestLog2(t *testing.T) {
 }
 
 func TestIsPowerOfTwo(t *testing.T) {
-	const rounds int = 1e8*2
+	const rounds int = 1e8
 	// IsPowerOfTwo := IsPowerOfTwoFP
 	// IsPowerOfTwo := IsPowerOfTwoJava
 	zero := 0.0
@@ -534,7 +520,7 @@ func TestIsPowerOfTwo(t *testing.T) {
 
 	state := uint64(1)
 	for i := 0; i < rounds; i++ {
-		f1 := Ulp(RandomFloat64(&state))                      // Ulp is power of two
+		f1 := Ulp(RandomFloat64(&state))                      // Ulp is power of two 
 		f2 := math.Float64frombits(math.Float64bits(f1) + 5)  // not power of two
 		if !IsPowerOfTwo(f1) || IsPowerOfTwo(f2) {
 			t.Logf("i       %d", i)
