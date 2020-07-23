@@ -67,19 +67,25 @@ func BenchmarkIsPowerOfTwoJava(b *testing.B) {
 func BenchmarkUlp(b *testing.B) {
 	var y float64
 	for n := 0; n < b.N; n++ {
-		// y = Ulp(float64(n))
-		// y = UlpBits(float64(n))
-		y = UlpDiff(float64(n))
+		y = Ulp(float64(n))
+	}
+	fsink = y
+}
+func BenchmarkUlpB(b *testing.B) {
+	var y float64
+	for n := 0; n < b.N; n++ {
+		y = UlpB(float64(n))
 	}
 	fsink = y
 }
 
 func BenchmarkLogUlp(b *testing.B) {
-	var y int
+	var u int
 	for n := 0; n < b.N; n++ {
-		y = LogUlp(float64(n))
+		u = LogUlp(float64(n))
+		// u = Log2(Ulp(float64(n)))
 	}
-	isink = y
+	isink = u
 }
 func BenchmarkLog2(b *testing.B) {
 	var u int
@@ -358,6 +364,7 @@ func TestAdjacentFP(t *testing.T) {
 
 func TestUlpsBetween(t *testing.T) {
 	const rounds int = 1e8
+	log2 := math.Log2
 	zero, max, inf, nan, min := 0.0, math.MaxFloat64, math.Inf(1), math.NaN(), 0x1p-1074
 
 	t.Logf("+Inf 0     %v", UlpsBetween(inf, 0))
@@ -365,17 +372,17 @@ func TestUlpsBetween(t *testing.T) {
 	t.Logf("NaN 0      %v", UlpsBetween(nan, 0))
 	t.Logf("+Inf +Inf  %v", UlpsBetween(inf, inf))
 	t.Logf("-Inf +Inf  %v", UlpsBetween(-inf, inf))
-	t.Logf("-max max   %v (log2)", math.Log2(float64(UlpsBetween(-max, max))))
+	t.Logf("-max max   %v (log2)", log2(float64(UlpsBetween(-max, max))))
 	t.Logf("-min min   %v", UlpsBetween(-min, min))
 	t.Logf("-zero zero %v", float64(UlpsBetween(-zero, zero)))
 	t.Logf("-zero min  %v", float64(UlpsBetween(-zero, min)))
 	t.Logf("zero min   %v", UlpsBetween(zero, min))
 	t.Logf("zero -min  %v", UlpsBetween(zero, -min))
 	t.Logf("-zero -min %v", UlpsBetween(-zero, -min))
-	t.Logf("0.5 - 1    %v (log2)", math.Log2(float64(UlpsBetween(0.5, 1.0))))
-	t.Logf("0 - 1      %v (log2)", math.Log2(float64(UlpsBetween(0, 1.0))))
-	t.Logf("1 - Inf    %v (log2)", math.Log2(float64(UlpsBetween(1.0, inf))))
- 	t.Logf("subNorm    %v (log2)", math.Log2(float64(UlpsBetween(0, 0x1p-1022))))
+	t.Logf("0.5 - 1    %v (log2)", log2(float64(UlpsBetween(0.5, 1.0))))
+	t.Logf("0 - 1      %v (log2)", log2(float64(UlpsBetween(0, 1.0))))
+	t.Logf("1 - Inf    %v (log2)", log2(float64(UlpsBetween(1.0, inf))))
+ 	t.Logf("subNorm    %v (log2)", log2(float64(UlpsBetween(0, 0x1p-1022))))
 	
 	state := uint64(1)
 	for i := 1; i < rounds; i++ {
@@ -403,26 +410,27 @@ func TestUlpsBetween(t *testing.T) {
 	}
 }
 
+
 func TestUlp(t *testing.T) {
-    const rounds int = 1e8*2
-	Ulp := UlpDiff
-	// Ulp := UlpBits
+	const rounds int = 1e8*2
+	log2 := math.Log2
+	// Ulp := UlpB
 
 	t.Logf("Value        Log2(Ulp)")
-	t.Logf("0            %v", math.Log2(Ulp(0)))
-	t.Logf("0.5          %v", math.Log2(Ulp(0.5)))
-	t.Logf("1            %v", math.Log2(Ulp(1)))
-	t.Logf("2            %v", math.Log2(Ulp(2)))
-	t.Logf("2^51         %v", math.Log2(Ulp(0x1p+51)))
-	t.Logf("2^52         %v", math.Log2(Ulp(0x1p+52)))
-	t.Logf("2^53         %v", math.Log2(Ulp(0x1p+53)))
-	t.Logf("0x1p-1074    %v", math.Log2(Ulp(0x1p-1074)))
-	t.Logf("0x1p-1025    %v", math.Log2(Ulp(0x1p-1025)))
-	t.Logf("0x1p-1021    %v", math.Log2(Ulp(0x1p-1021)))
-	t.Logf("0x1p-1021-   %v", math.Log2(Ulp(0x1p-1021 - 0x1p-1050)))
-	t.Logf("+/-Inf       %v", math.Log2(Ulp(math.Inf(1))))
-	t.Logf("NaN          %v", math.Log2(Ulp(math.NaN())))
-	t.Logf("MaxFloat64   %v", math.Log2(Ulp(math.MaxFloat64)))
+	t.Logf("0            %v", log2(Ulp(0)))
+	t.Logf("0.5          %v", log2(Ulp(0.5)))
+	t.Logf("1            %v", log2(Ulp(1)))
+	t.Logf("2            %v", log2(Ulp(2)))
+	t.Logf("2^51         %v", log2(Ulp(0x1p+51)))
+	t.Logf("2^52         %v", log2(Ulp(0x1p+52)))
+	t.Logf("2^53         %v", log2(Ulp(0x1p+53)))
+	t.Logf("0x1p-1074    %v", log2(Ulp(0x1p-1074)))
+	t.Logf("0x1p-1025    %v", log2(Ulp(0x1p-1025)))
+	t.Logf("0x1p-1021    %v", log2(Ulp(0x1p-1021)))
+	t.Logf("0x1p-1021-   %v", log2(Ulp(0x1p-1021 - 0x1p-1050)))
+	t.Logf("+/-Inf       %v", log2(Ulp(math.Inf(1))))
+	t.Logf("NaN          %v", log2(Ulp(math.NaN())))
+	t.Logf("MaxFloat64   %v", log2(Ulp(math.MaxFloat64)))
 	state := uint64(1)
 	for i := 0; i < rounds; i++ {
 		f1 := RandomFloat64(&state)

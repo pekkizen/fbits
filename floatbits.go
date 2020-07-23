@@ -11,10 +11,10 @@ const (
 	maxUint64 = 1<<64 - 1
 )
 
-// UlpsBetween returns the distance between x and y in ulpS.
+// UlpsBetween returns the distance between x and y in ulps as an uint64.
 // 
 // The distance in ulps is the number of float64's between x and y - 1.
-// Special cases:
+// Special and other cases:
 // UlpsBetween(+/-Inf, +/-MaxFloat64) = 1
 // UlpsBetween(+/-Inf, +/-Inf)        = 0
 // UlpsBetween(-Inf, +Inf)            = maxUint64 - 2^53 + 1 (18437736874454810624)
@@ -45,7 +45,6 @@ func UlpsBetween(x, y float64) (u uint64) {
 // Adjacent returns true, if x and y are Adjacent floats.
 // 
 // Adjacent(x, y) is a faster equivalent to UlpsBetween(x, y) == 1.
-// For x > 0 and y > x  Adjacent(x, y) == (math.Nextafter(x, y) == y)
 // Special and other cases:
 // Adjacent(+Inf, +MaxFloat64) = true
 // Adjacent(-Inf, -MaxFloat64) = true
@@ -266,7 +265,7 @@ func IsFinite(x float64) bool {
 
 // NextToZero returns the next float64 after x towards zero.
 // 
-// NextToZero(x) is equivalent to math.Nextafter(x, 0)
+// NextToZero(x) is equivalent to math.Nextafter(x, 0).
 // In a benchmark loop it is faster than math.Abs.
 // Special cases:
 // NextToZero(+/-Inf)   = +/-MaxFloat64
@@ -284,7 +283,7 @@ func NextToZero(x float64) float64 {
 	return math.Float64frombits(math.Float64bits(x) - 1)
 }
 
-// NextToZeroFP is equivalent to NextToZero for abs(x) > 2^-1022. 
+// NextToZeroFP is equivalent to math.Nextafter(x, 0) for abs(x) > 2^-1022. 
 // In (0, 2^-1022] NextToZeroFP(x) fails and returns x.
 // The constant 1 - 0x1p-53 converts exactly to the next float64 from 1 towards zero. 
 // Float64bits(1):           3FF0000000000000.
